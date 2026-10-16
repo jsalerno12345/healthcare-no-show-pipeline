@@ -1,12 +1,17 @@
 version: 2
 
+# Every staging model has the same shape and the same tests, so the three
+# systems can be stacked into one table downstream.
+
 models:
   - name: stg_system_a__appointments
-    description: System A appointments in the shared shape, one row per appointment.
-    columns:
+    description: System A (EHR) appointments in the shared shape, one row per appointment.
+    columns: &staging_columns
       - name: appointment_id
         data_tests: [unique, not_null]
       - name: appointment_date
+        data_tests: [not_null]
+      - name: scheduled_at
         data_tests: [not_null]
       - name: visit_status
         data_tests:
@@ -22,3 +27,13 @@ models:
           - valid_age:
               config:
                 severity: warn
+
+  - name: stg_system_b__appointments
+    description: >
+      System B (front-desk software) appointments, deduplicated to one row per
+      appointment, with free-text statuses mapped to the standard set.
+    columns: *staging_columns
+
+  - name: stg_system_c__appointments
+    description: System C (legacy) appointments in the shared shape.
+    columns: *staging_columns

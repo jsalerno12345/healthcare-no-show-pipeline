@@ -13,3 +13,4 @@ __pycache__/
 .venv/
 *.pyc
 dbt/.user.yml
+.dagster_home/

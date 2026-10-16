@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clinic No-Show Dashboard</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f4f4f2; --surface-1: #fcfcfb; --border: #e3e2de;
+    --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #77766f;
+    --grid: #e9e8e4; --axis: #c9c8c2;
+    --series-1: #2a78d6; --series-2: #eb6834;
+    --warn-bg: #fff4dc; --warn-ink: #7a4f00;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #111110; --surface-1: #1a1a19; --border: #2e2e2c;
+      --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #94938b;
+      --grid: #2a2a28; --axis: #474743;
+      --series-1: #3987e5; --series-2: #d95926;
+      --warn-bg: #3a2c0c; --warn-ink: #f2cf86;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #111110; --surface-1: #1a1a19; --border: #2e2e2c;
+    --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #94938b;
+    --grid: #2a2a28; --axis: #474743;
+    --series-1: #3987e5; --series-2: #d95926;
+    --warn-bg: #3a2c0c; --warn-ink: #f2cf86;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--text-primary);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 16px; margin: 0 0 2px; }
+  .sub { color: var(--text-secondary); margin: 0 0 24px; }
+  .note { color: var(--text-muted); font-size: 13px; margin: 0 0 12px; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(12, 1fr); }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px;
+          padding: 18px 20px; grid-column: span 12; min-width: 0; }
+  .half { grid-column: span 6; }
+  .kpi { grid-column: span 3; }
+  @media (max-width: 760px) { .half { grid-column: span 12; } .kpi { grid-column: span 6; } }
+  .kpi .label { color: var(--text-secondary); font-size: 13px; }
+  .kpi .value { font-size: 30px; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .kpi .detail { color: var(--text-muted); font-size: 12px; }
+  .finding { background: var(--warn-bg); color: var(--warn-ink); border-radius: 8px;
+             padding: 10px 12px; font-size: 14px; margin: 0 0 12px; }
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  svg text { fill: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  svg .lbl { fill: var(--text-secondary); font-size: 12px; }
+  .legend { display: flex; gap: 16px; font-size: 13px; color: var(--text-secondary); margin: 4px 0 8px; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .tip { position: fixed; pointer-events: none; background: var(--surface-1); color: var(--text-primary);
+         border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12px;
+         box-shadow: 0 4px 16px rgba(0,0,0,.12); opacity: 0; transition: opacity .1s; z-index: 10; }
+  details { margin-top: 10px; font-size: 13px; color: var(--text-secondary); }
+  summary { cursor: pointer; }
+  .tablewrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--text-secondary); font-weight: 600; }
+  td.num, th.num { text-align: right; }
+  footer { color: var(--text-muted); font-size: 12px; margin-top: 24px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Clinic No-Show Dashboard</h1>
+  <p class="sub" id="sub"></p>
+
+  <div class="grid">
+    <div class="card kpi"><div class="label">No-show rate</div><div class="value" id="k-rate"></div><div class="detail" id="k-rate-d"></div></div>
+    <div class="card kpi"><div class="label">Appointments</div><div class="value" id="k-appts"></div><div class="detail" id="k-appts-d"></div></div>
+    <div class="card kpi"><div class="label">Reminder effect</div><div class="value" id="k-sms"></div><div class="detail">adjusted, bookings 3+ days ahead</div></div>
+    <div class="card kpi"><div class="label">Data issues caught</div><div class="value" id="k-dq"></div><div class="detail" id="k-dq-d"></div></div>
+
+    <div class="card">
+      <h2>Daily no-show rate</h2>
+      <p class="note">Share of appointments with a known outcome that were missed.</p>
+      <div id="daily"></div>
+      <details><summary>Show table</summary><div class="tablewrap" id="daily-t"></div></details>
+    </div>
+
+    <div class="card half">
+      <h2>By day of week</h2>
+      <p class="note" id="weekday-note"></p>
+      <div id="weekday"></div>
+      <details><summary>Show table</summary><div class="tablewrap" id="weekday-t"></div></details>
+    </div>
+
+    <div class="card half">
+      <h2>Highest and lowest clinics</h2>
+      <p class="note">Clinics with 100+ known outcomes. Top 6 and bottom 6.</p>
+      <div id="clinics"></div>
+      <details><summary>Show all clinics</summary><div class="tablewrap" id="clinics-t"></div></details>
+    </div>
+
+    <div class="card" id="sms-card">
+      <h2>Do SMS reminders work?</h2>
+      <p class="finding" id="sms-finding"></p>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--series-1)"></span>With SMS reminder</span>
+        <span><span class="swatch" style="background:var(--series-2)"></span>No reminder</span>
+      </div>
+      <div id="sms"></div>
+      <p class="note" style="text-align:center;margin:4px 0 0">How far ahead the appointment was booked</p>
+      <details><summary>Show table</summary><div class="tablewrap" id="sms-t"></div></details>
+    </div>
+
+    <div class="card">
+      <h2>Data quality by clinic system</h2>
+      <p class="note">What the pipeline caught and handled before these numbers were calculated.</p>
+      <div class="tablewrap" id="dq"></div>
+    </div>
+  </div>
+
+  <footer>
+    Metric: no-show rate = no-shows ÷ appointments with a known outcome. Unmapped statuses (e.g. LWBS) are excluded from the rate and counted in the data quality table.
+    Source: Kaggle "Medical Appointment No Shows" (Vitória, Brazil, 2016); clinic systems, providers and data errors are simulated.
+  </footer>
+</main>
+<div class="tip" id="tip"></div>
+
+<script>
+const DATA = {"kpi": {"appointments": 110527, "no_shows": 22288, "no_show_rate": 0.2019, "clinics": 81, "providers": 344, "first_date": "2016-04-29", "last_date": "2016-06-08"}, "daily": [{"date": "2016-04-29", "appointments": 3235, "rate": 0.1955}, {"date": "2016-05-02", "appointments": 4376, "rate": 0.1969}, {"date": "2016-05-03", "appointments": 4256, "rate": 0.1954}, {"date": "2016-05-04", "appointments": 4168, "rate": 0.2328}, {"date": "2016-05-05", "appointments": 4273, "rate": 0.189}, {"date": "2016-05-06", "appointments": 3879, "rate": 0.205}, {"date": "2016-05-09", "appointments": 4520, "rate": 0.2252}, {"date": "2016-05-10", "appointments": 4308, "rate": 0.2306}, {"date": "2016-05-11", "appointments": 4474, "rate": 0.198}, {"date": "2016-05-12", "appointments": 4394, "rate": 0.1905}, {"date": "2016-05-13", "appointments": 3987, "rate": 0.2265}, {"date": "2016-05-14", "appointments": 39, "rate": 0.2308}, {"date": "2016-05-16", "appointments": 4613, "rate": 0.2276}, {"date": "2016-05-17", "appointments": 4372, "rate": 0.214}, {"date": "2016-05-18", "appointments": 4373, "rate": 0.2033}, {"date": "2016-05-19", "appointments": 4270, "rate": 0.2087}, {"date": "2016-05-20", "appointments": 3828, "rate": 0.2349}, {"date": "2016-05-24", "appointments": 4009, "rate": 0.2019}, {"date": "2016-05-25", "appointments": 3909, "rate": 0.1946}, {"date": "2016-05-30", "appointments": 4514, "rate": 0.1967}, {"date": "2016-05-31", "appointments": 4279, "rate": 0.1794}, {"date": "2016-06-01", "appointments": 4464, "rate": 0.1817}, {"date": "2016-06-02", "appointments": 4310, "rate": 0.186}, {"date": "2016-06-03", "appointments": 4090, "rate": 0.197}, {"date": "2016-06-06", "appointments": 4692, "rate": 0.1859}, {"date": "2016-06-07", "appointments": 4416, "rate": 0.1849}, {"date": "2016-06-08", "appointments": 4479, "rate": 0.1729}], "weekday": [{"label": "Monday", "appointments": 22715, "rate": 0.2065}, {"label": "Tuesday", "appointments": 25640, "rate": 0.201}, {"label": "Wednesday", "appointments": 25867, "rate": 0.1968}, {"label": "Thursday", "appointments": 17247, "rate": 0.1935}, {"label": "Friday", "appointments": 19019, "rate": 0.2122}, {"label": "Saturday", "appointments": 39, "rate": 0.2308}], "clinics": [{"label": "SANTOS DUMONT", "appointments": 1276, "rate": 0.2891}, {"label": "SANTA CEC\u00cdLIA", "appointments": 448, "rate": 0.2725}, {"label": "SANTA CLARA", "appointments": 506, "rate": 0.2648}, {"label": "ITARAR\u00c9", "appointments": 3514, "rate": 0.2621}, {"label": "JESUS DE NAZARETH", "appointments": 2853, "rate": 0.2441}, {"label": "HORTO", "appointments": 175, "rate": 0.2414}, {"label": "ILHA DO PR\u00cdNCIPE", "appointments": 2266, "rate": 0.2348}, {"label": "CARATO\u00cdRA", "appointments": 2565, "rate": 0.2304}, {"label": "ANDORINHAS", "appointments": 2262, "rate": 0.2294}, {"label": "PRAIA DO SU\u00c1", "appointments": 1288, "rate": 0.2288}, {"label": "GURIGICA", "appointments": 2018, "rate": 0.226}, {"label": "BENTO FERREIRA", "appointments": 858, "rate": 0.2249}, {"label": "PARQUE MOSCOSO", "appointments": 802, "rate": 0.2232}, {"label": "MARU\u00cdPE", "appointments": 1902, "rate": 0.2229}, {"label": "DO MOSCOSO", "appointments": 413, "rate": 0.2228}, {"label": "ENSEADA DO SU\u00c1", "appointments": 235, "rate": 0.2213}, {"label": "ILHA DAS CAIEIRAS", "appointments": 1071, "rate": 0.2202}, {"label": "ARIOVALDO FAVALESSA", "appointments": 282, "rate": 0.2199}, {"label": "FONTE GRANDE", "appointments": 682, "rate": 0.2185}, {"label": "CRUZAMENTO", "appointments": 1398, "rate": 0.2178}, {"label": "S\u00c3O JOS\u00c9", "appointments": 1977, "rate": 0.2161}, {"label": "BARRO VERMELHO", "appointments": 423, "rate": 0.2151}, {"label": "NAZARETH", "appointments": 135, "rate": 0.2148}, {"label": "ROM\u00c3O", "appointments": 2215, "rate": 0.214}, {"label": "CENTRO", "appointments": 3334, "rate": 0.2109}, {"label": "UNIVERSIT\u00c1RIO", "appointments": 152, "rate": 0.2105}, {"label": "S\u00c3O PEDRO", "appointments": 2448, "rate": 0.2104}, {"label": "MARIA ORTIZ", "appointments": 5805, "rate": 0.21}, {"label": "SANTA HELENA", "appointments": 178, "rate": 0.209}, {"label": "SANTOS REIS", "appointments": 547, "rate": 0.2048}, {"label": "RESIST\u00caNCIA", "appointments": 4431, "rate": 0.2045}, {"label": "SANTA TEREZA", "appointments": 1332, "rate": 0.2042}, {"label": "GRANDE VIT\u00d3RIA", "appointments": 1071, "rate": 0.2026}, {"label": "BELA VISTA", "appointments": 1907, "rate": 0.2014}, {"label": "MONTE BELO", "appointments": 824, "rate": 0.2005}, {"label": "S\u00c3O BENEDITO", "appointments": 1439, "rate": 0.1994}, {"label": "BONFIM", "appointments": 2773, "rate": 0.1988}, {"label": "S\u00c3O CRIST\u00d3V\u00c3O", "appointments": 1836, "rate": 0.1977}, {"label": "SANTO ANDR\u00c9", "appointments": 2571, "rate": 0.1976}, {"label": "ESTRELINHA", "appointments": 538, "rate": 0.197}, {"label": "SANTA L\u00daCIA", "appointments": 438, "rate": 0.1963}, {"label": "GOIABEIRAS", "appointments": 700, "rate": 0.1957}, {"label": "PIEDADE", "appointments": 452, "rate": 0.1947}, {"label": "DA PENHA", "appointments": 2217, "rate": 0.1935}, {"label": "SEGURAN\u00c7A DO LAR", "appointments": 145, "rate": 0.1931}, {"label": "JUCUTUQUARA", "appointments": 694, "rate": 0.1928}, {"label": "INHANGUET\u00c1", "appointments": 1057, "rate": 0.192}, {"label": "ILHA DE SANTA MARIA", "appointments": 1885, "rate": 0.1917}, {"label": "JARDIM CAMBURI", "appointments": 7717, "rate": 0.1898}, {"label": "CONQUISTA", "appointments": 849, "rate": 0.1885}, {"label": "FRADINHOS", "appointments": 258, "rate": 0.186}, {"label": "BOA VISTA", "appointments": 312, "rate": 0.1859}, {"label": "ANT\u00d4NIO HON\u00d3RIO", "appointments": 271, "rate": 0.1859}, {"label": "PRAIA DO CANTO", "appointments": 1035, "rate": 0.1835}, {"label": "FORTE S\u00c3O JO\u00c3O", "appointments": 1889, "rate": 0.1832}, {"label": "TABUAZEIRO", "appointments": 3132, "rate": 0.183}, {"label": "JOANA D\u00b4ARC", "appointments": 1427, "rate": 0.1808}, {"label": "COMDUSA", "appointments": 310, "rate": 0.1806}, {"label": "SANTA LU\u00cdZA", "appointments": 428, "rate": 0.1799}, {"label": "JABOUR", "appointments": 2509, "rate": 0.1798}, {"label": "NOVA PALESTINA", "appointments": 2264, "rate": 0.1772}, {"label": "REDEN\u00c7\u00c3O", "appointments": 1553, "rate": 0.1771}, {"label": "SANTO ANT\u00d4NIO", "appointments": 2746, "rate": 0.1764}, {"label": "CONSOLA\u00c7\u00c3O", "appointments": 1376, "rate": 0.1722}, {"label": "REP\u00daBLICA", "appointments": 835, "rate": 0.1713}, {"label": "MATA DA PRAIA", "appointments": 644, "rate": 0.1708}, {"label": "VILA RUBIM", "appointments": 851, "rate": 0.1657}, {"label": "DO QUADRO", "appointments": 849, "rate": 0.1649}, {"label": "JARDIM DA PENHA", "appointments": 3877, "rate": 0.1627}, {"label": "SANTA MARTHA", "appointments": 3131, "rate": 0.1584}, {"label": "DO CABRAL", "appointments": 560, "rate": 0.1571}, {"label": "DE LOURDES", "appointments": 305, "rate": 0.1541}, {"label": "SOLON BORGES", "appointments": 469, "rate": 0.1474}, {"label": "M\u00c1RIO CYPRESTE", "appointments": 371, "rate": 0.1456}], "quality": [{"source_system": "system_a", "raw_rows": 22483, "clean_rows": 22483, "duplicate_rows_removed": 0, "resent_files_skipped": 0, "unmapped_status_rows": 0, "unmapped_values": null, "invalid_age_rows": 0, "booked_after_visit_rows": 1}, {"source_system": "system_b", "raw_rows": 39586, "clean_rows": 39194, "duplicate_rows_removed": 392, "resent_files_skipped": 1, "unmapped_status_rows": 145, "unmapped_values": "LWBS, (blank), ?", "invalid_age_rows": 0, "booked_after_visit_rows": 2}, {"source_system": "system_c", "raw_rows": 48850, "clean_rows": 48850, "duplicate_rows_removed": 0, "resent_files_skipped": 0, "unmapped_status_rows": 0, "unmapped_values": null, "invalid_age_rows": 1, "booked_after_visit_rows": 2}], "sms": {"naive_with_sms": 0.2759, "naive_without_sms": 0.1669, "adjusted_effect_pp": -5.4, "odds_ratio": 0.766, "odds_ratio_ci": [0.739, 0.794], "by_lead_time": [{"lead_time": "Same day", "with_sms": null, "with_sms_n": 0, "without_sms": 0.0465, "without_sms_n": 38518}, {"lead_time": "1-2 days", "with_sms": null, "with_sms_n": 0, "without_sms": 0.2272, "without_sms_n": 11924}, {"lead_time": "3-7 days", "with_sms": 0.2376, "with_sms_n": 11535, "without_sms": 0.2659, "without_sms_n": 8688}, {"lead_time": "8-14 days", "with_sms": 0.2815, "with_sms_n": 6992, "without_sms": 0.3376, "without_sms_n": 5012}, {"lead_time": "15-30 days", "with_sms": 0.2983, "with_sms_n": 10501, "without_sms": 0.3683, "without_sms_n": 6839}, {"lead_time": "31+ days", "with_sms": 0.3021, "with_sms_n": 6402, "without_sms": 0.3753, "without_sms_n": 3965}]}};
+const pct = (v, d = 1) => v == null ? "—" : (v * 100).toFixed(d) + "%";
+const num = v => v == null ? "—" : Number(v).toLocaleString("en-US");
+const NS = "http://www.w3.org/2000/svg";
+const tip = document.getElementById("tip");
+
+function el(tag, attrs = {}, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function showTip(html, evt) {
+  tip.innerHTML = html; tip.style.opacity = 1;
+  const x = Math.min(evt.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
+  tip.style.left = x + "px"; tip.style.top = (evt.clientY + 14) + "px";
+}
+function hideTip() { tip.style.opacity = 0; }
+// Draw wide charts at their real on-screen width so text stays readable on phones.
+function widthOf(id) { return Math.max(320, Math.min(1000, document.getElementById(id).clientWidth || 1000)); }
+function niceStep(v) { return v <= 0.3 ? 0.05 : 0.1; }
+function niceMax(v) { const s = niceStep(v); return Math.ceil(v / s - 1e-9) * s; }
+function table(id, cols, rows) {
+  const head = cols.map(c => `<th class="${c.num ? "num" : ""}">${c.label}</th>`).join("");
+  const body = rows.map(r => "<tr>" + cols.map(c => `<td class="${c.num ? "num" : ""}">${c.fmt ? c.fmt(r[c.key]) : (r[c.key] ?? "—")}</td>`).join("") + "</tr>").join("");
+  document.getElementById(id).innerHTML = `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+function yAxis(svg, m, w, h, max) {
+  for (let t = 0; t <= max + 1e-9; t += niceStep(max)) {
+    const y = m.t + h - (t / max) * h;
+    el("line", { x1: m.l, x2: m.l + w, y1: y, y2: y, stroke: "var(--grid)" }, svg);
+    el("text", { x: m.l - 6, y: y + 4, "text-anchor": "end" }, svg).textContent = pct(t, 0);
+  }
+}
+
+// ---- KPIs
+const k = DATA.kpi;
+document.getElementById("sub").textContent =
+  `${k.first_date} to ${k.last_date} · ${k.clinics} clinics · ${k.providers} providers · 3 clinic systems`;
+document.getElementById("k-rate").textContent = pct(k.no_show_rate);
+document.getElementById("k-rate-d").textContent = `${num(k.no_shows)} missed appointments`;
+document.getElementById("k-appts").textContent = num(k.appointments);
+document.getElementById("k-appts-d").textContent = `after removing duplicates`;
+const dq = DATA.quality;
+const dupes = dq.reduce((s, r) => s + r.duplicate_rows_removed, 0);
+const unm = dq.reduce((s, r) => s + r.unmapped_status_rows, 0);
+const resent = dq.reduce((s, r) => s + r.resent_files_skipped, 0);
+document.getElementById("k-dq").textContent = num(dupes + unm + resent);
+document.getElementById("k-dq-d").textContent = `${dupes} duplicates · ${unm} unmapped · ${resent} re-sent file${resent === 1 ? "" : "s"}`;
+document.getElementById("k-sms").textContent = DATA.sms ? `${DATA.sms.adjusted_effect_pp} pts` : "—";
+
+// ---- Daily line
+(function () {
+  const d = DATA.daily, W = widthOf("daily"), H = 260, m = { t: 12, r: 12, b: 28, l: 44 };
+  const w = W - m.l - m.r, h = H - m.t - m.b, max = niceMax(Math.max(...d.map(r => r.rate)));
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Daily no-show rate line chart" });
+  yAxis(svg, m, w, h, max);
+  const x = i => m.l + (i / (d.length - 1)) * w, y = v => m.t + h - (v / max) * h;
+  el("path", { d: d.map((r, i) => `${i ? "L" : "M"}${x(i)},${y(r.rate)}`).join(""), fill: "none",
+               stroke: "var(--series-1)", "stroke-width": 2, "stroke-linejoin": "round" }, svg);
+  const every = W < 600 ? 9 : 5;
+  d.forEach((r, i) => { if ((i % every === 0 && d.length - 1 - i >= every / 2) || i === d.length - 1)
+    el("text", { x: x(i), y: H - 8, "text-anchor": "middle" }, svg).textContent = r.date.slice(5); });
+  const cross = el("line", { y1: m.t, y2: m.t + h, stroke: "var(--axis)", opacity: 0 }, svg);
+  const dot = el("circle", { r: 4.5, fill: "var(--series-1)", stroke: "var(--surface-1)", "stroke-width": 2, opacity: 0 }, svg);
+  const hit = el("rect", { x: m.l, y: m.t, width: w, height: h, fill: "transparent" }, svg);
+  hit.addEventListener("mousemove", e => {
+    const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+    const loc = p.matrixTransform(svg.getScreenCTM().inverse());
+    const i = Math.max(0, Math.min(d.length - 1, Math.round((loc.x - m.l) / w * (d.length - 1))));
+    cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("opacity", 1);
+    dot.setAttribute("cx", x(i)); dot.setAttribute("cy", y(d[i].rate)); dot.setAttribute("opacity", 1);
+    showTip(`<b>${d[i].date}</b><br>No-show rate ${pct(d[i].rate)}<br>${num(d[i].appointments)} appointments`, e);
+  });
+  hit.addEventListener("mouseleave", () => { cross.setAttribute("opacity", 0); dot.setAttribute("opacity", 0); hideTip(); });
+  document.getElementById("daily").appendChild(svg);
+  table("daily-t", [{ key: "date", label: "Date" }, { key: "appointments", label: "Appointments", num: 1, fmt: num },
+                    { key: "rate", label: "No-show rate", num: 1, fmt: pct }], d);
+})();
+
+// ---- Vertical bars (weekday)
+function vbars(id, rows, labelFn) {
+  const W = 500, H = 240, m = { t: 20, r: 8, b: 28, l: 44 };
+  const w = W - m.l - m.r, h = H - m.t - m.b, max = niceMax(Math.max(...rows.map(r => r.rate)));
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" });
+  yAxis(svg, m, w, h, max);
+  const band = w / rows.length, bw = Math.min(44, band - 2);
+  rows.forEach((r, i) => {
+    const bh = (r.rate / max) * h, x0 = m.l + i * band + (band - bw) / 2, y0 = m.t + h - bh;
+    el("path", { d: `M${x0},${m.t + h}V${y0 + 4}q0,-4 4,-4h${bw - 8}q4,0 4,4V${m.t + h}Z`, fill: "var(--series-1)" }, svg);
+    el("text", { x: x0 + bw / 2, y: y0 - 6, "text-anchor": "middle", class: "lbl" }, svg).textContent = pct(r.rate);
+    el("text", { x: x0 + bw / 2, y: H - 8, "text-anchor": "middle" }, svg).textContent = labelFn(r);
+    const hit = el("rect", { x: m.l + i * band, y: m.t, width: band, height: h, fill: "transparent" }, svg);
+    hit.addEventListener("mousemove", e => showTip(`<b>${r.label}</b><br>No-show rate ${pct(r.rate)}<br>${num(r.appointments)} appointments`, e));
+    hit.addEventListener("mouseleave", hideTip);
+  });
+  document.getElementById(id).appendChild(svg);
+}
+const wk = DATA.weekday.filter(r => r.appointments >= 100);
+const small = DATA.weekday.filter(r => r.appointments < 100);
+const top2 = [...wk].sort((a, b) => b.rate - a.rate).slice(0, 2).map(r => r.label + "s");
+document.getElementById("weekday-note").textContent = `${top2.join(" and ")} run highest.` +
+  (small.length ? ` ${small.map(r => r.label).join(", ")} omitted (${small.map(r => r.appointments).join(", ")} appointments).` : "");
+vbars("weekday", wk, r => r.label.slice(0, 3));
+table("weekday-t", [{ key: "label", label: "Day" }, { key: "appointments", label: "Appointments", num: 1, fmt: num },
+                    { key: "rate", label: "No-show rate", num: 1, fmt: pct }], DATA.weekday);
+
+// ---- Horizontal bars (clinics)
+(function () {
+  const all = DATA.clinics, rows = [...all.slice(0, 6), null, ...all.slice(-6)];
+  const W = 500, rowH = 22, m = { t: 4, r: 52, b: 4, l: 160 }, H = m.t + m.b + rows.length * rowH;
+  const w = W - m.l - m.r, max = niceMax(all[0].rate);
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" });
+  rows.forEach((r, i) => {
+    const y0 = m.t + i * rowH + 3, bh = rowH - 8;
+    if (!r) { el("text", { x: m.l, y: y0 + bh - 2, class: "lbl" }, svg).textContent = "⋯"; return; }
+    const bw = Math.max(4, (r.rate / max) * w);
+    el("text", { x: m.l - 8, y: y0 + bh - 3, "text-anchor": "end", class: "lbl" }, svg).textContent =
+      r.label.length > 22 ? r.label.slice(0, 21) + "…" : r.label;
+    el("path", { d: `M${m.l},${y0}H${m.l + bw - 4}q4,0 4,4V${y0 + bh - 4}q0,4 -4,4H${m.l}Z`, fill: "var(--series-1)" }, svg);
+    el("text", { x: m.l + bw + 6, y: y0 + bh - 3 }, svg).textContent = pct(r.rate);
+    const hit = el("rect", { x: 0, y: m.t + i * rowH, width: W, height: rowH, fill: "transparent" }, svg);
+    hit.addEventListener("mousemove", e => showTip(`<b>${r.label}</b><br>No-show rate ${pct(r.rate)}<br>${num(r.appointments)} appointments`, e));
+    hit.addEventListener("mouseleave", hideTip);
+  });
+  document.getElementById("clinics").appendChild(svg);
+  table("clinics-t", [{ key: "label", label: "Clinic" }, { key: "appointments", label: "Appointments", num: 1, fmt: num },
+                      { key: "rate", label: "No-show rate", num: 1, fmt: pct }], all);
+})();
+
+// ---- Grouped bars (SMS by lead time)
+(function () {
+  const s = DATA.sms;
+  if (!s) { document.getElementById("sms-card").style.display = "none"; return; }
+  document.getElementById("sms-finding").innerHTML =
+    `At first glance reminders look harmful: <b>${pct(s.naive_with_sms)}</b> of reminded patients missed their visit vs <b>${pct(s.naive_without_sms)}</b> without. ` +
+    `But reminders only go to visits booked 3+ days out, which are missed more often anyway. Compared within the same booking window, reminded patients miss <b>fewer</b> visits every time.`;
+  const rows = s.by_lead_time, W = widthOf("sms"), H = 260, m = { t: 20, r: 12, b: 28, l: 44 };
+  const w = W - m.l - m.r, h = H - m.t - m.b;
+  const max = niceMax(Math.max(...rows.flatMap(r => [r.with_sms || 0, r.without_sms || 0])));
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "No-show rate by booking lead time, with and without SMS" });
+  yAxis(svg, m, w, h, max);
+  const band = w / rows.length, bw = Math.min(46, (band - 24) / 2);
+  const roomy = band >= 90;
+  rows.forEach((r, i) => {
+    const cx = m.l + i * band + band / 2;
+    [["with_sms", "var(--series-1)", -1], ["without_sms", "var(--series-2)", 1]].forEach(([key, color, side]) => {
+      const v = r[key];
+      const x0 = side < 0 ? cx - 1 - bw : cx + 1;
+      if (v == null) {
+        if (side < 0 && roomy) el("text", { x: cx - 1 - bw / 2, y: m.t + h - 6, "text-anchor": "middle" }, svg).textContent = "none sent";
+        return;
+      }
+      const bh = (v / max) * h, y0 = m.t + h - bh;
+      el("path", { d: `M${x0},${m.t + h}V${y0 + 4}q0,-4 4,-4h${bw - 8}q4,0 4,4V${m.t + h}Z`, fill: color }, svg);
+      if (roomy) el("text", { x: x0 + bw / 2, y: y0 - 6, "text-anchor": "middle", class: "lbl" }, svg).textContent = pct(v, 0);
+    });
+    el("text", { x: cx, y: H - 8, "text-anchor": "middle" }, svg).textContent =
+      roomy ? r.lead_time : r.lead_time.replace("Same day", "0").replace(" days", "");
+    const hit = el("rect", { x: m.l + i * band, y: m.t, width: band, height: h, fill: "transparent" }, svg);
+    hit.addEventListener("mousemove", e => showTip(
+      `<b>Booked ${r.lead_time.toLowerCase()}</b><br>With SMS: ${pct(r.with_sms)} (${num(r.with_sms_n)})<br>No reminder: ${pct(r.without_sms)} (${num(r.without_sms_n)})`, e));
+    hit.addEventListener("mouseleave", hideTip);
+  });
+  document.getElementById("sms").appendChild(svg);
+  table("sms-t", [{ key: "lead_time", label: "Booked ahead" },
+                  { key: "with_sms", label: "With SMS", num: 1, fmt: pct }, { key: "with_sms_n", label: "n", num: 1, fmt: num },
+                  { key: "without_sms", label: "No reminder", num: 1, fmt: pct }, { key: "without_sms_n", label: "n", num: 1, fmt: num }], rows);
+})();
+
+// ---- Data quality table
+table("dq", [
+  { key: "source_system", label: "System" },
+  { key: "raw_rows", label: "Rows received", num: 1, fmt: num },
+  { key: "duplicate_rows_removed", label: "Duplicates removed", num: 1, fmt: num },
+  { key: "resent_files_skipped", label: "Re-sent files skipped", num: 1, fmt: num },
+  { key: "unmapped_status_rows", label: "Unmapped statuses", num: 1, fmt: num },
+  { key: "unmapped_values", label: "Unmapped values" },
+  { key: "invalid_age_rows", label: "Invalid ages", num: 1, fmt: num },
+  { key: "booked_after_visit_rows", label: "Booked after visit", num: 1, fmt: num },
+], dq);
+</script>
+</body>
+</html>

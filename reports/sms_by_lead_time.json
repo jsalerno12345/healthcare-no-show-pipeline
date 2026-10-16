@@ -1,0 +1,54 @@
+{
+  "naive_with_sms": 0.2759,
+  "naive_without_sms": 0.1669,
+  "adjusted_effect_pp": -5.4,
+  "odds_ratio": 0.766,
+  "odds_ratio_ci": [
+    0.739,
+    0.794
+  ],
+  "by_lead_time": [
+    {
+      "lead_time": "Same day",
+      "with_sms": null,
+      "with_sms_n": 0,
+      "without_sms": 0.0465,
+      "without_sms_n": 38518
+    },
+    {
+      "lead_time": "1-2 days",
+      "with_sms": null,
+      "with_sms_n": 0,
+      "without_sms": 0.2272,
+      "without_sms_n": 11924
+    },
+    {
+      "lead_time": "3-7 days",
+      "with_sms": 0.2376,
+      "with_sms_n": 11535,
+      "without_sms": 0.2659,
+      "without_sms_n": 8688
+    },
+    {
+      "lead_time": "8-14 days",
+      "with_sms": 0.2815,
+      "with_sms_n": 6992,
+      "without_sms": 0.3376,
+      "without_sms_n": 5012
+    },
+    {
+      "lead_time": "15-30 days",
+      "with_sms": 0.2983,
+      "with_sms_n": 10501,
+      "without_sms": 0.3683,
+      "without_sms_n": 6839
+    },
+    {
+      "lead_time": "31+ days",
+      "with_sms": 0.3021,
+      "with_sms_n": 6402,
+      "without_sms": 0.3753,
+      "without_sms_n": 3965
+    }
+  ]
+}

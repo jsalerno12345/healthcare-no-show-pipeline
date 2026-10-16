@@ -1,0 +1,48 @@
+version: 2
+
+models:
+  - name: fct_appointments
+    description: One row per appointment across all clinic systems. The source of truth for reporting.
+    columns:
+      - name: appointment_id
+        description: Unique across all systems (checked).
+        data_tests: [unique, not_null]
+      - name: visit_status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["arrived", "no_show", "unmapped"]
+      - name: lead_time_days
+        description: Days from booking to visit. Negative values are a source data error (see is_booked_after_visit).
+
+  - name: mart_no_show_daily
+    description: >
+      No-show counts and rate per appointment date, clinic and provider.
+      Rate = no_shows / appointments with a known outcome. Roll up by summing
+      counts, never by averaging rates.
+    columns:
+      - name: no_show_rate
+        data_tests:
+          - rate_between_0_and_1
+
+  - name: mart_no_show_by_clinic
+    description: Period-level no-show rate per clinic, with a small-sample flag (< 100 known outcomes).
+    columns:
+      - name: clinic_name
+        data_tests: [unique, not_null]
+      - name: no_show_rate
+        data_tests:
+          - rate_between_0_and_1
+
+  - name: mart_no_show_by_weekday
+    description: No-show rate by day of week.
+    columns:
+      - name: no_show_rate
+        data_tests:
+          - rate_between_0_and_1
+
+  - name: mart_data_quality
+    description: Per-system data quality scorecard (duplicates removed, re-sent files, unmapped statuses, invalid values).
+    columns:
+      - name: source_system
+        data_tests: [unique, not_null]

@@ -1,5 +1,4 @@
--- Worked example (Week 1): standardize System A into the shared appointment shape.
--- Weeks 2 builds the same model for System B and System C — see docs/LEARNING.md.
+-- System A: EHR export. The cleanest of the three, so it's the reference pattern.
 --
 -- Pattern used by every staging model:
 --   1. rename columns to the shared names

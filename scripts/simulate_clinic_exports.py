@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import random
+import shutil
 from pathlib import Path
 
 import pandas as pd
@@ -140,7 +141,7 @@ def write_daily(rows, day_col, folder: Path, pattern: str, sep: str, drop=None) 
 def resend_one_file(out: Path) -> None:
     """System B re-sends one day's file under a new name — same rows, new file.
     A naive loader double-counts these appointments."""
-    files = sorted((out / "system_b").glob("DailyVisits_*.csv"))
+    files = sorted(p for p in (out / "system_b").glob("DailyVisits_*.csv") if "_RESEND" not in p.name)
     original = files[len(files) // 2]
     resent = original.with_name(original.stem + "_RESEND.csv")
     resent.write_bytes(original.read_bytes())
@@ -156,6 +157,8 @@ def main() -> None:
             "Download 'Medical Appointment No Shows' from Kaggle and save it there "
             "(see README, 'Get the data')."
         )
+    # Start clean so every run produces exactly the same set of files.
+    shutil.rmtree(OUT_DIR, ignore_errors=True)
     rng = random.Random(SEED)
     df = load_source(args.source)
     export_system_a(df[df.system == "a"], OUT_DIR)

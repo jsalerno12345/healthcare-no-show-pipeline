@@ -53,11 +53,17 @@ def setup(con: duckdb.DuckDBPyConnection) -> None:
 
 def load_file(con, system: str, path: Path, sep: str) -> str:
     file_hash = sha256(path)
-    seen = con.execute(
-        "select file_name, status from raw.load_manifest where file_hash = ?", [file_hash]
+    same_file = con.execute(
+        "select status from raw.load_manifest where file_name = ? and file_hash = ?",
+        [path.name, file_hash],
     ).fetchone()
-    if seen and seen[0] == path.name:
-        return "already_loaded"
+    if same_file:
+        # Seen this exact file before (loaded, or already skipped as a re-send).
+        return "already_loaded" if same_file[0] == "loaded" else "already_skipped"
+    seen = con.execute(
+        "select file_name from raw.load_manifest where file_hash = ? and status = 'loaded'",
+        [file_hash],
+    ).fetchone()
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     if seen:
         # Same bytes, different name: a re-sent file. Record it, don't load it.
