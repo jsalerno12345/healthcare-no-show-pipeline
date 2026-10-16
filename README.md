@@ -1,5 +1,7 @@
 # Healthcare No-Show Pipeline
 
+[![CI](https://github.com/jsalerno12345/healthcare-no-show-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/jsalerno12345/healthcare-no-show-pipeline/actions/workflows/ci.yml)
+
 **Turning messy appointment exports from three clinic systems into a trustworthy daily no-show dashboard, and finding out whether SMS reminders actually work.**
 
 Missed appointments cost clinics revenue and delay care. Leadership wants a daily no-show rate by clinic, provider and day of week. The hard part isn't the division. It's that every clinic system sends data differently, and a dashboard built on inconsistent data is confidently wrong.
@@ -51,6 +53,8 @@ analysis + dashboard ────► reports/       SMS analysis (logistic regre
 Orchestrated by Dagster: nightly at 6:00am ET, with the quality checks as asset checks.
 35 dbt tests, including a reconciliation test that every raw appointment lands exactly once.
 ```
+
+**Continuous integration:** every push runs the full pipeline, all dbt tests, an idempotency check and Dagster validation on GitHub Actions, using a synthetic sample with the same shape as the real data (`scripts/make_sample_source.py`).
 
 Runs entirely on a laptop: [DuckDB](https://duckdb.org/) warehouse, [dbt](https://www.getdbt.com/) transformations, [Dagster](https://dagster.io/) orchestration. No cloud account needed.
 

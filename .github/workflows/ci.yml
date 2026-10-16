@@ -1,0 +1,47 @@
+# Runs the whole pipeline and every data test on each push and pull request.
+# Uses a synthetic sample with the same shape as the Kaggle file, so CI needs
+# no download and no secrets.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate synthetic source data
+        run: python scripts/make_sample_source.py
+
+      - name: Run pipeline (simulate → load → checks → dbt build → analysis → dashboard)
+        run: python run.py all
+
+      - name: Loader is idempotent (second run loads nothing new)
+        run: |
+          out=$(python scripts/load_raw.py)
+          echo "$out"
+          if echo "$out" | grep -qE "[ :]loaded="; then echo "Second load loaded new files"; exit 1; fi
+
+      - name: Quality checks pass
+        run: python scripts/quality_checks.py
+
+      - name: Dagster definitions are valid
+        run: |
+          mkdir -p "$DAGSTER_HOME"
+          dagster definitions validate -f orchestration/definitions.py
+        env:
+          DAGSTER_HOME: ${{ runner.temp }}/dagster
