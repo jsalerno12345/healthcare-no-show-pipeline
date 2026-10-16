@@ -6,7 +6,7 @@ Missed appointments cost clinics revenue and delay care. Leadership wants a dail
 
 This project builds the whole pipeline: ingest → clean → standardize → test → schedule → serve → analyze.
 
-**[Dashboard](reports/dashboard.html)** · **[SMS reminder analysis](reports/sms_reminder_analysis.md)**
+**[Live dashboard](https://jsalerno12345.github.io/healthcare-no-show-pipeline/reports/dashboard.html)** · **[SMS reminder analysis](reports/sms_reminder_analysis.md)**
 
 ---
 
