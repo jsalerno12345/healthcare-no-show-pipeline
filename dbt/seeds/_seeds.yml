@@ -1,0 +1,20 @@
+version: 2
+
+seeds:
+  - name: status_mapping
+    description: >
+      Bridge table translating each clinic system's raw visit status into one
+      standard status. Raw values not listed here are flagged as "unmapped"
+      downstream instead of being silently dropped or guessed.
+      System B values are stored lower-cased and trimmed; staging normalizes
+      before joining.
+    columns:
+      - name: source_system
+        data_tests: [not_null]
+      - name: raw_status
+        data_tests: [not_null]
+      - name: standard_status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["arrived", "no_show"]

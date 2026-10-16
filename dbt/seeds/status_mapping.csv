@@ -1,0 +1,11 @@
+source_system,raw_status,standard_status
+system_a,1,arrived
+system_a,2,no_show
+system_b,arrived,arrived
+system_b,checked in,arrived
+system_b,no show,no_show
+system_b,no-show,no_show
+system_b,ns,no_show
+system_b,noshow,no_show
+system_c,Y,arrived
+system_c,N,no_show

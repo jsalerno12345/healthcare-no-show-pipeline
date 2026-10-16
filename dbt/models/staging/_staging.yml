@@ -1,0 +1,24 @@
+version: 2
+
+models:
+  - name: stg_system_a__appointments
+    description: System A appointments in the shared shape, one row per appointment.
+    columns:
+      - name: appointment_id
+        data_tests: [unique, not_null]
+      - name: appointment_date
+        data_tests: [not_null]
+      - name: visit_status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["arrived", "no_show", "unmapped"]
+      - name: patient_age
+        description: >
+          Ages outside 0-115 are kept as-is and surfaced as a warning so the
+          clinic can fix them at the source. (The source data has one negative
+          age; it lands in System C.)
+        data_tests:
+          - valid_age:
+              config:
+                severity: warn

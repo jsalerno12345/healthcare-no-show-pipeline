@@ -1,0 +1,21 @@
+name: noshow
+version: "0.1.0"
+config-version: 2
+profile: noshow
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+
+models:
+  noshow:
+    staging:
+      +materialized: view
+      +schema: staging
+
+seeds:
+  noshow:
+    +schema: reference
+    status_mapping:
+      +column_types:
+        raw_status: varchar

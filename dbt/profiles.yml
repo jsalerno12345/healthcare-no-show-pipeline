@@ -1,0 +1,8 @@
+noshow:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      # Relative to where dbt is run; run.py always runs from the project root.
+      path: data/warehouse.duckdb
+      threads: 4

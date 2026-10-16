@@ -1,0 +1,30 @@
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      Nightly appointment exports from three clinic systems, loaded as-is
+      (every column is text) by scripts/load_raw.py. Each row carries
+      _source_file and _loaded_at for lineage.
+    schema: raw
+    tables:
+      - name: load_manifest
+        description: One row per file the loader has seen, with its content hash.
+      - name: system_a_appointments
+        description: EHR export. ISO dates, numeric status codes (1 arrived, 2 no show).
+        columns:
+          - name: appointment_id
+            data_tests: [not_null]
+      - name: system_b_appointments
+        description: >
+          Front-desk software export. US dates, free-text statuses with many
+          spellings, ~1% duplicate rows.
+        columns:
+          - name: Appt ID
+            quote: true
+            data_tests: [not_null]
+      - name: system_c_appointments
+        description: Legacy pipe-delimited export. Day-first dates, Y/N attended flag.
+        columns:
+          - name: APPTNO
+            data_tests: [not_null]
